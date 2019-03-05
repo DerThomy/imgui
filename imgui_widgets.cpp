@@ -74,22 +74,30 @@ Index of this file:
 //-------------------------------------------------------------------------
 
 // Those MIN/MAX values are not define because we need to point to them
-static const ImS32  IM_S32_MIN = INT_MIN;    // (-2147483647 - 1), (0x80000000);
-static const ImS32  IM_S32_MAX = INT_MAX;    // (2147483647), (0x7FFFFFFF)
-static const ImU32  IM_U32_MIN = 0;
-static const ImU32  IM_U32_MAX = UINT_MAX;   // (0xFFFFFFFF)
+static const char           IM_S8_MIN  = -128;
+static const char           IM_S8_MAX  = 127;
+static const unsigned char  IM_U8_MIN  = 0;
+static const unsigned char  IM_U8_MAX  = 0xFF;
+static const short          IM_S16_MIN = -32768;
+static const short          IM_S16_MAX = 32767;
+static const unsigned short IM_U16_MIN = 0;
+static const unsigned short IM_U16_MAX = 0xFFFF;
+static const ImS32          IM_S32_MIN = INT_MIN;    // (-2147483647 - 1), (0x80000000);
+static const ImS32          IM_S32_MAX = INT_MAX;    // (2147483647), (0x7FFFFFFF)
+static const ImU32          IM_U32_MIN = 0;
+static const ImU32          IM_U32_MAX = UINT_MAX;   // (0xFFFFFFFF)
 #ifdef LLONG_MIN
-static const ImS64  IM_S64_MIN = LLONG_MIN;  // (-9223372036854775807ll - 1ll);
-static const ImS64  IM_S64_MAX = LLONG_MAX;  // (9223372036854775807ll);
+static const ImS64          IM_S64_MIN = LLONG_MIN;  // (-9223372036854775807ll - 1ll);
+static const ImS64          IM_S64_MAX = LLONG_MAX;  // (9223372036854775807ll);
 #else
-static const ImS64  IM_S64_MIN = -9223372036854775807LL - 1;
-static const ImS64  IM_S64_MAX = 9223372036854775807LL;
+static const ImS64          IM_S64_MIN = -9223372036854775807LL - 1;
+static const ImS64          IM_S64_MAX = 9223372036854775807LL;
 #endif
-static const ImU64  IM_U64_MIN = 0;
+static const ImU64          IM_U64_MIN = 0;
 #ifdef ULLONG_MAX
-static const ImU64  IM_U64_MAX = ULLONG_MAX; // (0xFFFFFFFFFFFFFFFFull);
+static const ImU64          IM_U64_MAX = ULLONG_MAX; // (0xFFFFFFFFFFFFFFFFull);
 #else
-static const ImU64  IM_U64_MAX = (2ULL * 9223372036854775807LL + 1);
+static const ImU64          IM_U64_MAX = (2ULL * 9223372036854775807LL + 1);
 #endif
 
 //-------------------------------------------------------------------------
@@ -1526,17 +1534,21 @@ struct ImGuiDataTypeInfo
 
 static const ImGuiDataTypeInfo GDataTypeInfo[] =
 {
-    { sizeof(int),          "%d",   "%d"    },
-    { sizeof(unsigned int), "%u",   "%u"    },
+    { sizeof(char),             "%d",   "%d"    },  // ImGuiDataType_S8
+    { sizeof(unsigned char),    "%u",   "%u"    },
+    { sizeof(short),            "%d",   "%d"    },  // ImGuiDataType_S16
+    { sizeof(unsigned short),   "%u",   "%u"    },
+    { sizeof(int),              "%d",   "%d"    },  // ImGuiDataType_S32
+    { sizeof(unsigned int),     "%u",   "%u"    },
 #ifdef _MSC_VER
-    { sizeof(ImS64),        "%I64d","%I64d" },
-    { sizeof(ImU64),        "%I64u","%I64u" },
+    { sizeof(ImS64),            "%I64d","%I64d" },  // ImGuiDataType_S64
+    { sizeof(ImU64),            "%I64u","%I64u" },
 #else
-    { sizeof(ImS64),        "%lld", "%lld"  },
-    { sizeof(ImU64),        "%llu", "%llu"  },
+    { sizeof(ImS64),            "%lld", "%lld"  },  // ImGuiDataType_S64
+    { sizeof(ImU64),            "%llu", "%llu"  },
 #endif
-    { sizeof(float),        "%f",   "%f"    },  // float are promoted to double in va_arg
-    { sizeof(double),       "%f",   "%lf"   },
+    { sizeof(float),            "%f",   "%f"    },  // ImGuiDataType_Float (float are promoted to double in va_arg)
+    { sizeof(double),           "%f",   "%lf"   },  // ImGuiDataType_Double
 };
 IM_STATIC_ASSERT(IM_ARRAYSIZE(GDataTypeInfo) == ImGuiDataType_COUNT);
 
@@ -1566,47 +1578,71 @@ static const char* PatchFormatStringFloatToInt(const char* fmt)
 
 static inline int DataTypeFormatString(char* buf, int buf_size, ImGuiDataType data_type, const void* data_ptr, const char* format)
 {
-    if (data_type == ImGuiDataType_S32 || data_type == ImGuiDataType_U32)   // Signedness doesn't matter when pushing the argument
+    // Signedness doesn't matter when pushing integer arguments
+    if (data_type == ImGuiDataType_S32 || data_type == ImGuiDataType_U32)
         return ImFormatString(buf, buf_size, format, *(const ImU32*)data_ptr);
-    if (data_type == ImGuiDataType_S64 || data_type == ImGuiDataType_U64)   // Signedness doesn't matter when pushing the argument
+    if (data_type == ImGuiDataType_S64 || data_type == ImGuiDataType_U64)
         return ImFormatString(buf, buf_size, format, *(const ImU64*)data_ptr);
     if (data_type == ImGuiDataType_Float)
         return ImFormatString(buf, buf_size, format, *(const float*)data_ptr);
     if (data_type == ImGuiDataType_Double)
         return ImFormatString(buf, buf_size, format, *(const double*)data_ptr);
+    if (data_type == ImGuiDataType_S8)
+        return ImFormatString(buf, buf_size, format, *(const ImS8*)data_ptr);
+    if (data_type == ImGuiDataType_U8)
+        return ImFormatString(buf, buf_size, format, *(const ImU8*)data_ptr);
+    if (data_type == ImGuiDataType_S16)
+        return ImFormatString(buf, buf_size, format, *(const ImS16*)data_ptr);
+    if (data_type == ImGuiDataType_U16)
+        return ImFormatString(buf, buf_size, format, *(const ImU16*)data_ptr);
     IM_ASSERT(0);
     return 0;
 }
 
-// FIXME: Adding support for clamping on boundaries of the data type would be nice.
 static void DataTypeApplyOp(ImGuiDataType data_type, int op, void* output, void* arg1, const void* arg2)
 {
     IM_ASSERT(op == '+' || op == '-');
     switch (data_type)
     {
+        case ImGuiDataType_S8:
+            if (op == '+') { *(ImS8*)output  = ImAddClampOverflow(*(const ImS8*)arg1,  *(const ImS8*)arg2,  IM_S8_MIN,  IM_S8_MAX); }
+            if (op == '-') { *(ImS8*)output  = ImSubClampOverflow(*(const ImS8*)arg1,  *(const ImS8*)arg2,  IM_S8_MIN,  IM_S8_MAX); }
+            return;
+        case ImGuiDataType_U8:
+            if (op == '+') { *(ImU8*)output  = ImAddClampOverflow(*(const ImU8*)arg1,  *(const ImU8*)arg2,  IM_U8_MIN,  IM_U8_MAX); }
+            if (op == '-') { *(ImU8*)output  = ImSubClampOverflow(*(const ImU8*)arg1,  *(const ImU8*)arg2,  IM_U8_MIN,  IM_U8_MAX); }
+            return;
+        case ImGuiDataType_S16:
+            if (op == '+') { *(ImS16*)output = ImAddClampOverflow(*(const ImS16*)arg1, *(const ImS16*)arg2, IM_S16_MIN, IM_S16_MAX); }
+            if (op == '-') { *(ImS16*)output = ImSubClampOverflow(*(const ImS16*)arg1, *(const ImS16*)arg2, IM_S16_MIN, IM_S16_MAX); }
+            return;
+        case ImGuiDataType_U16:
+            if (op == '+') { *(ImU16*)output = ImAddClampOverflow(*(const ImU16*)arg1, *(const ImU16*)arg2, IM_U16_MIN, IM_U16_MAX); }
+            if (op == '-') { *(ImU16*)output = ImSubClampOverflow(*(const ImU16*)arg1, *(const ImU16*)arg2, IM_U16_MIN, IM_U16_MAX); }
+            return;
         case ImGuiDataType_S32:
-            if (op == '+')      *(int*)output = *(const int*)arg1 + *(const int*)arg2;
-            else if (op == '-') *(int*)output = *(const int*)arg1 - *(const int*)arg2;
+            if (op == '+') { *(ImS32*)output = ImAddClampOverflow(*(const ImS32*)arg1, *(const ImS32*)arg2, IM_S32_MIN, IM_S32_MAX); }
+            if (op == '-') { *(ImS32*)output = ImSubClampOverflow(*(const ImS32*)arg1, *(const ImS32*)arg2, IM_S32_MIN, IM_S32_MAX); }
             return;
         case ImGuiDataType_U32:
-            if (op == '+')      *(unsigned int*)output = *(const unsigned int*)arg1 + *(const ImU32*)arg2;
-            else if (op == '-') *(unsigned int*)output = *(const unsigned int*)arg1 - *(const ImU32*)arg2;
+            if (op == '+') { *(ImU32*)output = ImAddClampOverflow(*(const ImU32*)arg1, *(const ImU32*)arg2, IM_U32_MIN, IM_U32_MAX); }
+            if (op == '-') { *(ImU32*)output = ImSubClampOverflow(*(const ImU32*)arg1, *(const ImU32*)arg2, IM_U32_MIN, IM_U32_MAX); }
             return;
         case ImGuiDataType_S64:
-            if (op == '+')      *(ImS64*)output = *(const ImS64*)arg1 + *(const ImS64*)arg2;
-            else if (op == '-') *(ImS64*)output = *(const ImS64*)arg1 - *(const ImS64*)arg2;
+            if (op == '+') { *(ImS64*)output = ImAddClampOverflow(*(const ImS64*)arg1, *(const ImS64*)arg2, IM_S64_MIN, IM_S64_MAX); }
+            if (op == '-') { *(ImS64*)output = ImSubClampOverflow(*(const ImS64*)arg1, *(const ImS64*)arg2, IM_S64_MIN, IM_S64_MAX); }
             return;
         case ImGuiDataType_U64:
-            if (op == '+')      *(ImU64*)output = *(const ImU64*)arg1 + *(const ImU64*)arg2;
-            else if (op == '-') *(ImU64*)output = *(const ImU64*)arg1 - *(const ImU64*)arg2;
+            if (op == '+') { *(ImU64*)output = ImAddClampOverflow(*(const ImU64*)arg1, *(const ImU64*)arg2, IM_U64_MIN, IM_U64_MAX); }
+            if (op == '-') { *(ImU64*)output = ImSubClampOverflow(*(const ImU64*)arg1, *(const ImU64*)arg2, IM_U64_MIN, IM_U64_MAX); }
             return;
         case ImGuiDataType_Float:
-            if (op == '+')      *(float*)output = *(const float*)arg1 + *(const float*)arg2;
-            else if (op == '-') *(float*)output = *(const float*)arg1 - *(const float*)arg2;
+            if (op == '+') { *(float*)output = *(const float*)arg1 + *(const float*)arg2; }
+            if (op == '-') { *(float*)output = *(const float*)arg1 - *(const float*)arg2; }
             return;
         case ImGuiDataType_Double:
-            if (op == '+')      *(double*)output = *(const double*)arg1 + *(const double*)arg2;
-            else if (op == '-') *(double*)output = *(const double*)arg1 - *(const double*)arg2;
+            if (op == '+') { *(double*)output = *(const double*)arg1 + *(const double*)arg2; } 
+            if (op == '-') { *(double*)output = *(const double*)arg1 - *(const double*)arg2; }
             return;
         case ImGuiDataType_COUNT: break;
     }
@@ -1645,6 +1681,7 @@ static bool DataTypeApplyOpFromText(const char* buf, const char* initial_value_b
     if (format == NULL)
         format = GDataTypeInfo[data_type].ScanFmt;
 
+    // FIXME-LEGACY: The aim is to remove those operators and write a proper expression evaluator at some point..
     int arg1i = 0;
     if (data_type == ImGuiDataType_S32)
     {
@@ -1658,12 +1695,6 @@ static bool DataTypeApplyOpFromText(const char* buf, const char* initial_value_b
         else if (op == '*') { if (sscanf(buf, "%f", &arg1f)) *v = (int)(arg0i * arg1f); }                   // Multiply
         else if (op == '/') { if (sscanf(buf, "%f", &arg1f) && arg1f != 0.0f) *v = (int)(arg0i / arg1f); }  // Divide
         else                { if (sscanf(buf, format, &arg1i) == 1) *v = arg1i; }                           // Assign constant
-    }
-    else if (data_type == ImGuiDataType_U32 || data_type == ImGuiDataType_S64 || data_type == ImGuiDataType_U64)
-    {
-        // Assign constant
-        // FIXME: We don't bother handling support for legacy operators since they are a little too crappy. Instead we may implement a proper expression evaluator in the future.
-        sscanf(buf, format, data_ptr);
     }
     else if (data_type == ImGuiDataType_Float)
     {
@@ -1694,6 +1725,29 @@ static bool DataTypeApplyOpFromText(const char* buf, const char* initial_value_b
         else if (op == '/') { if (arg1f != 0.0f) *v = arg0f / arg1f; } // Divide
         else                { *v = arg1f; }                            // Assign constant
     }
+    else if (data_type == ImGuiDataType_U32 || data_type == ImGuiDataType_S64 || data_type == ImGuiDataType_U64)
+    {
+        // All other types assign constant
+        // We don't bother handling support for legacy operators since they are a little too crappy. Instead we will later implement a proper expression evaluator in the future.
+        sscanf(buf, format, data_ptr);
+    }
+    else
+    {
+        // Small types need a 32-bit buffer to receive the result from scanf()
+        int v32;
+        sscanf(buf, format, &v32);
+        if (data_type == ImGuiDataType_S8)
+            *(ImS8*)data_ptr = (ImS8)ImClamp(v32, (int)IM_S8_MIN, (int)IM_S8_MAX);
+        else if (data_type == ImGuiDataType_U8)
+            *(ImU8*)data_ptr = (ImU8)ImClamp(v32, (int)IM_U8_MIN, (int)IM_U8_MAX);
+        else if (data_type == ImGuiDataType_S16)
+            *(ImS16*)data_ptr = (ImS16)ImClamp(v32, (int)IM_S16_MIN, (int)IM_S16_MAX);
+        else if (data_type == ImGuiDataType_U16)
+            *(ImU16*)data_ptr = (ImU16)ImClamp(v32, (int)IM_U16_MIN, (int)IM_U16_MAX);
+        else
+            IM_ASSERT(0);
+    }
+
     return memcmp(data_backup, data_ptr, GDataTypeInfo[data_type].Size) != 0;
 }
 
@@ -1876,6 +1930,10 @@ bool ImGui::DragBehavior(ImGuiID id, ImGuiDataType data_type, void* v, float v_s
 
     switch (data_type)
     {
+    case ImGuiDataType_S8:     { ImS32 v32 = (ImS32)*(ImS8*)v;  bool r = DragBehaviorT<ImS32, ImS32, float >(ImGuiDataType_S32, &v32, v_speed, v_min ? *(const ImS8*) v_min : IM_S8_MIN,  v_max ? *(const ImS8*)v_max  : IM_S8_MAX,  format, power, flags); if (r) *(ImS8*)v = (ImS8)v32; return r; }
+    case ImGuiDataType_U8:     { ImU32 v32 = (ImU32)*(ImU8*)v;  bool r = DragBehaviorT<ImU32, ImS32, float >(ImGuiDataType_U32, &v32, v_speed, v_min ? *(const ImU8*) v_min : IM_U8_MIN,  v_max ? *(const ImU8*)v_max  : IM_U8_MAX,  format, power, flags); if (r) *(ImU8*)v = (ImU8)v32; return r; }
+    case ImGuiDataType_S16:    { ImS32 v32 = (ImS32)*(ImS16*)v; bool r = DragBehaviorT<ImS32, ImS32, float >(ImGuiDataType_S32, &v32, v_speed, v_min ? *(const ImS16*)v_min : IM_S16_MIN, v_max ? *(const ImS16*)v_max : IM_S16_MAX, format, power, flags); if (r) *(ImS16*)v = (ImS16)v32; return r; }
+    case ImGuiDataType_U16:    { ImU32 v32 = (ImU32)*(ImU16*)v; bool r = DragBehaviorT<ImU32, ImS32, float >(ImGuiDataType_U32, &v32, v_speed, v_min ? *(const ImU16*)v_min : IM_U16_MIN, v_max ? *(const ImU16*)v_max : IM_U16_MAX, format, power, flags); if (r) *(ImU16*)v = (ImU16)v32; return r; }
     case ImGuiDataType_S32:    return DragBehaviorT<ImS32, ImS32, float >(data_type, (ImS32*)v,  v_speed, v_min ? *(const ImS32* )v_min : IM_S32_MIN, v_max ? *(const ImS32* )v_max : IM_S32_MAX, format, power, flags);
     case ImGuiDataType_U32:    return DragBehaviorT<ImU32, ImS32, float >(data_type, (ImU32*)v,  v_speed, v_min ? *(const ImU32* )v_min : IM_U32_MIN, v_max ? *(const ImU32* )v_max : IM_U32_MAX, format, power, flags);
     case ImGuiDataType_S64:    return DragBehaviorT<ImS64, ImS64, double>(data_type, (ImS64*)v,  v_speed, v_min ? *(const ImS64* )v_min : IM_S64_MIN, v_max ? *(const ImS64* )v_max : IM_S64_MAX, format, power, flags);
@@ -2300,6 +2358,10 @@ bool ImGui::SliderBehavior(const ImRect& bb, ImGuiID id, ImGuiDataType data_type
 {
     switch (data_type)
     {
+    case ImGuiDataType_S8:  { ImS32 v32 = (ImS32)*(ImS8*)v;  bool r = SliderBehaviorT<ImS32, ImS32, float >(bb, id, ImGuiDataType_S32, &v32, *(const ImS8*)v_min,  *(const ImS8*)v_max,  format, power, flags, out_grab_bb); if (r) *(ImS8*)v  = (ImS8)v32;  return r; }
+    case ImGuiDataType_U8:  { ImU32 v32 = (ImU32)*(ImU8*)v;  bool r = SliderBehaviorT<ImU32, ImS32, float >(bb, id, ImGuiDataType_U32, &v32, *(const ImU8*)v_min,  *(const ImU8*)v_max,  format, power, flags, out_grab_bb); if (r) *(ImU8*)v  = (ImU8)v32;  return r; }
+    case ImGuiDataType_S16: { ImS32 v32 = (ImS32)*(ImS16*)v; bool r = SliderBehaviorT<ImS32, ImS32, float >(bb, id, ImGuiDataType_S32, &v32, *(const ImS16*)v_min, *(const ImS16*)v_max, format, power, flags, out_grab_bb); if (r) *(ImS16*)v = (ImS16)v32; return r; }
+    case ImGuiDataType_U16: { ImU32 v32 = (ImU32)*(ImU16*)v; bool r = SliderBehaviorT<ImU32, ImS32, float >(bb, id, ImGuiDataType_U32, &v32, *(const ImU16*)v_min, *(const ImU16*)v_max, format, power, flags, out_grab_bb); if (r) *(ImU16*)v = (ImU16)v32; return r; }
     case ImGuiDataType_S32:
         IM_ASSERT(*(const ImS32*)v_min >= IM_S32_MIN/2 && *(const ImS32*)v_max <= IM_S32_MAX/2);
         return SliderBehaviorT<ImS32, ImS32, float >(bb, id, data_type, (ImS32*)v,  *(const ImS32*)v_min,  *(const ImS32*)v_max,  format, power, flags, out_grab_bb);
@@ -3174,7 +3236,7 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
     ImGuiIO& io = g.IO;
     const ImGuiStyle& style = g.Style;
 
-    const bool RENDER_SELECTION_WHEN_INACTIVE = true;
+    const bool RENDER_SELECTION_WHEN_INACTIVE = false;
     const bool is_multiline = (flags & ImGuiInputTextFlags_Multiline) != 0;
     const bool is_readonly = (flags & ImGuiInputTextFlags_ReadOnly) != 0;
     const bool is_password = (flags & ImGuiInputTextFlags_Password) != 0;
@@ -3255,7 +3317,8 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
     bool select_all = (g.ActiveId != id) && ((flags & ImGuiInputTextFlags_AutoSelectAll) != 0 || user_nav_input_start) && (!is_multiline);
 
     const bool init_make_active = (focus_requested || user_clicked || user_scroll_finish || user_nav_input_start);
-    if (init_make_active && g.ActiveId != id)
+    const bool init_state = (init_make_active || user_scroll_active);
+    if (init_state && g.ActiveId != id)
     {
         // Access state even if we don't own it yet.
         state = &g.InputTextState;
@@ -3268,15 +3331,16 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
         memcpy(state->InitialTextA.Data, buf, buf_len + 1);
 
         // Start edition
-        const int prev_len_w = state->CurLenW;
         const char* buf_end = NULL;
         state->TextW.resize(buf_size + 1);          // wchar count <= UTF-8 count. we use +1 to make sure that .Data is always pointing to at least an empty string.
+        state->TextA.resize(0);
+        state->TextAIsValid = false;                // TextA is not valid yet (we will display buf until then)
         state->CurLenW = ImTextStrFromUtf8(state->TextW.Data, buf_size, buf, NULL, &buf_end);
         state->CurLenA = (int)(buf_end - buf);      // We can't get the result from ImStrncpy() above because it is not UTF-8 aware. Here we'll cut off malformed UTF-8.
 
         // Preserve cursor position and undo/redo stack if we come back to same widget
-        // FIXME: We should probably compare the whole buffer to be on the safety side. Comparing buf (utf8) and edit_state.Text (wchar).
-        const bool recycle_state = (state->ID == id) && (prev_len_w == state->CurLenW);
+        // FIXME: For non-readonly widgets we might be able to require that TextAIsValid && TextA == buf ? (untested) and discard undo stack if user buffer has changed.
+        const bool recycle_state = (state->ID == id);
         if (recycle_state)
         {
             // Recycle existing cursor/selection/undo stack but clamp position
@@ -3297,7 +3361,7 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
             select_all = true;
     }
 
-    if (init_make_active)
+    if (g.ActiveId != id && init_make_active)
     {
         IM_ASSERT(state && state->ID == id);
         SetActiveID(id, window);
@@ -3308,32 +3372,38 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
             g.ActiveIdAllowNavDirFlags = ((1 << ImGuiDir_Up) | (1 << ImGuiDir_Down));
     }
 
-    // Release focus when we click outside
-    if (!init_make_active && io.MouseClicked[0])
-        clear_active_id = true;
-
-    // We have an edge case if ActiveId was set through another widget (e.g. widget being swapped)
+    // We have an edge case if ActiveId was set through another widget (e.g. widget being swapped), clear id immediately (don't wait until the end of the function)
     if (g.ActiveId == id && state == NULL)
         ClearActiveID();
+
+    // Release focus when we click outside
+    if (g.ActiveId == id && io.MouseClicked[0] && !init_state && !init_make_active) //-V560
+        clear_active_id = true;
 
     bool value_changed = false;
     bool enter_pressed = false;
     int backup_current_text_length = 0;
 
-    // Process mouse inputs and character inputs
-    if (g.ActiveId == id)
+    // When read-only we always use the live data passed to the function
+    // FIXME-OPT: Because our selection/cursor code currently needs the wide text we need to convert it when active, which is not ideal :(
+    if (is_readonly && state != NULL)
     {
-        IM_ASSERT(state != NULL);
-        if (is_readonly && !g.ActiveIdIsJustActivated)
+        const bool will_render_cursor = (g.ActiveId == id) || (user_scroll_active);
+        const bool will_render_selection = state->HasSelection() && (RENDER_SELECTION_WHEN_INACTIVE || will_render_cursor);
+        if (will_render_cursor || will_render_selection)
         {
-            // When read-only we always use the live data passed to the function
             const char* buf_end = NULL;
-            state->TextW.resize(buf_size+1);
+            state->TextW.resize(buf_size + 1);
             state->CurLenW = ImTextStrFromUtf8(state->TextW.Data, state->TextW.Size, buf, NULL, &buf_end);
             state->CurLenA = (int)(buf_end - buf);
             state->CursorClamp();
         }
+    }
 
+    // Process mouse inputs and character inputs
+    if (g.ActiveId == id)
+    {
+        IM_ASSERT(state != NULL);
         backup_current_text_length = state->CurLenA;
         state->BufCapacityA = buf_size;
         state->UserFlags = flags;
@@ -3546,6 +3616,7 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
             // FIXME-OPT: CPU waste to do this every time the widget is active, should mark dirty state from the stb_textedit callbacks.
             if (!is_readonly)
             {
+                state->TextAIsValid = true;
                 state->TextA.resize(state->TextW.Size * 4 + 1);
                 ImTextStrToUtf8(state->TextA.Data, state->TextA.Size, state->TextW.Data, NULL);
             }
@@ -3676,15 +3747,12 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
     // without any carriage return, which would makes ImFont::RenderText() reserve too many vertices and probably crash. Avoid it altogether.
     // Note that we only use this limit on single-line InputText(), so a pathologically large line on a InputTextMultiline() would still crash.
     const int buf_display_max_length = 2 * 1024 * 1024;
-
-    // Select which buffer we are going to display. We set buf to NULL to prevent accidental usage from now on.
-    const char* buf_display = (state != NULL && !is_readonly) ? state->TextA.Data : buf;
-    IM_ASSERT(buf_display);
-    buf = NULL;
+    const char* buf_display = NULL;
+    const char* buf_display_end = NULL;
 
     // Render text. We currently only render selection when the widget is active or while scrolling.
     // FIXME: We could remove the '&& render_cursor' to keep rendering selection when inactive.
-    const bool render_cursor = (g.ActiveId == id) || user_scroll_active;
+    const bool render_cursor = (g.ActiveId == id) || (state && user_scroll_active);
     const bool render_selection = state && state->HasSelection() && (RENDER_SELECTION_WHEN_INACTIVE || render_cursor);
     if (render_cursor || render_selection)
     {
@@ -3820,9 +3888,10 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
         }
 
         // We test for 'buf_display_max_length' as a way to avoid some pathological cases (e.g. single-line 1 MB string) which would make ImDrawList crash.
-        const int buf_display_len = state->CurLenA;
-        if (is_multiline || buf_display_len < buf_display_max_length)
-            draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, GetColorU32(ImGuiCol_Text), buf_display, buf_display + buf_display_len, 0.0f, is_multiline ? NULL : &clip_rect);
+        buf_display = (!is_readonly && state->TextAIsValid) ? state->TextA.Data : buf;
+        buf_display_end = buf_display + state->CurLenA;
+        if (is_multiline || (buf_display_end - buf_display) < buf_display_max_length)
+            draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, GetColorU32(ImGuiCol_Text), buf_display, buf_display_end, 0.0f, is_multiline ? NULL : &clip_rect);
 
         // Draw blinking cursor
         if (render_cursor)
@@ -3845,13 +3914,15 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
     else
     {
         // Render text only (no selection, no cursor)
-        const char* buf_end = NULL;
+        buf_display = (g.ActiveId == id && !is_readonly && state->TextAIsValid) ? state->TextA.Data : buf;
         if (is_multiline)
-            text_size = ImVec2(size.x, InputTextCalcTextLenAndLineCount(buf_display, &buf_end) * g.FontSize); // We don't need width
+            text_size = ImVec2(size.x, InputTextCalcTextLenAndLineCount(buf_display, &buf_display_end) * g.FontSize); // We don't need width
+        else if (g.ActiveId == id)
+            buf_display_end = buf_display + state->CurLenA;
         else
-            buf_end = buf_display + strlen(buf_display);
-        if (is_multiline || (buf_end - buf_display) < buf_display_max_length)
-            draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos, GetColorU32(ImGuiCol_Text), buf_display, buf_end, 0.0f, is_multiline ? NULL : &clip_rect);
+            buf_display_end = buf_display + strlen(buf_display);
+        if (is_multiline || (buf_display_end - buf_display) < buf_display_max_length)
+            draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos, GetColorU32(ImGuiCol_Text), buf_display, buf_display_end, 0.0f, is_multiline ? NULL : &clip_rect);
     }
 
     if (is_multiline)
@@ -3866,7 +3937,7 @@ bool ImGui::InputTextEx(const char* label, char* buf, int buf_size, const ImVec2
 
     // Log as text
     if (g.LogEnabled && !is_password)
-        LogRenderedText(&draw_pos, buf_display, NULL);
+        LogRenderedText(&draw_pos, buf_display, buf_display_end);
 
     if (label_size.x > 0)
         RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y), label);
@@ -3923,20 +3994,20 @@ bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flag
     // If we're not showing any slider there's no point in doing any HSV conversions
     const ImGuiColorEditFlags flags_untouched = flags;
     if (flags & ImGuiColorEditFlags_NoInputs)
-        flags = (flags & (~ImGuiColorEditFlags__InputsMask)) | ImGuiColorEditFlags_RGB | ImGuiColorEditFlags_NoOptions;
+        flags = (flags & (~ImGuiColorEditFlags__DisplayMask)) | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoOptions;
 
     // Context menu: display and modify options (before defaults are applied)
     if (!(flags & ImGuiColorEditFlags_NoOptions))
         ColorEditOptionsPopup(col, flags);
 
     // Read stored options
-    if (!(flags & ImGuiColorEditFlags__InputsMask))
-        flags |= (g.ColorEditOptions & ImGuiColorEditFlags__InputsMask);
+    if (!(flags & ImGuiColorEditFlags__DisplayMask))
+        flags |= (g.ColorEditOptions & ImGuiColorEditFlags__DisplayMask);
     if (!(flags & ImGuiColorEditFlags__DataTypeMask))
         flags |= (g.ColorEditOptions & ImGuiColorEditFlags__DataTypeMask);
     if (!(flags & ImGuiColorEditFlags__PickerMask))
         flags |= (g.ColorEditOptions & ImGuiColorEditFlags__PickerMask);
-    flags |= (g.ColorEditOptions & ~(ImGuiColorEditFlags__InputsMask | ImGuiColorEditFlags__DataTypeMask | ImGuiColorEditFlags__PickerMask));
+    flags |= (g.ColorEditOptions & ~(ImGuiColorEditFlags__DisplayMask | ImGuiColorEditFlags__DataTypeMask | ImGuiColorEditFlags__PickerMask));
 
     const bool alpha = (flags & ImGuiColorEditFlags_NoAlpha) == 0;
     const bool hdr = (flags & ImGuiColorEditFlags_HDR) != 0;
@@ -3944,14 +4015,14 @@ bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flag
 
     // Convert to the formats we need
     float f[4] = { col[0], col[1], col[2], alpha ? col[3] : 1.0f };
-    if (flags & ImGuiColorEditFlags_HSV)
+    if (flags & ImGuiColorEditFlags_DisplayHSV)
         ColorConvertRGBtoHSV(f[0], f[1], f[2], f[0], f[1], f[2]);
     int i[4] = { IM_F32_TO_INT8_UNBOUND(f[0]), IM_F32_TO_INT8_UNBOUND(f[1]), IM_F32_TO_INT8_UNBOUND(f[2]), IM_F32_TO_INT8_UNBOUND(f[3]) };
 
     bool value_changed = false;
     bool value_changed_as_float = false;
 
-    if ((flags & (ImGuiColorEditFlags_RGB | ImGuiColorEditFlags_HSV)) != 0 && (flags & ImGuiColorEditFlags_NoInputs) == 0)
+    if ((flags & (ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_DisplayHSV)) != 0 && (flags & ImGuiColorEditFlags_NoInputs) == 0)
     {
         // RGB/HSV 0..255 Sliders
         const float w_item_one  = ImMax(1.0f, (float)(int)((w_items_all - (style.ItemInnerSpacing.x) * (components-1)) / (float)components));
@@ -3971,7 +4042,7 @@ bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flag
             { "R:%0.3f", "G:%0.3f", "B:%0.3f", "A:%0.3f" }, // Long display for RGBA
             { "H:%0.3f", "S:%0.3f", "V:%0.3f", "A:%0.3f" }  // Long display for HSVA
         };
-        const int fmt_idx = hide_prefix ? 0 : (flags & ImGuiColorEditFlags_HSV) ? 2 : 1;
+        const int fmt_idx = hide_prefix ? 0 : (flags & ImGuiColorEditFlags_DisplayHSV) ? 2 : 1;
 
         PushItemWidth(w_item_one);
         for (int n = 0; n < components; n++)
@@ -3995,7 +4066,7 @@ bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flag
         PopItemWidth();
         PopItemWidth();
     }
-    else if ((flags & ImGuiColorEditFlags_HEX) != 0 && (flags & ImGuiColorEditFlags_NoInputs) == 0)
+    else if ((flags & ImGuiColorEditFlags_DisplayHex) != 0 && (flags & ImGuiColorEditFlags_NoInputs) == 0)
     {
         // RGB Hexadecimal Input
         char buf[64];
@@ -4050,7 +4121,7 @@ bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flag
                 Spacing();
             }
             ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags__DataTypeMask | ImGuiColorEditFlags__PickerMask | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar;
-            ImGuiColorEditFlags picker_flags = (flags_untouched & picker_flags_to_forward) | ImGuiColorEditFlags__InputsMask | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreviewHalf;
+            ImGuiColorEditFlags picker_flags = (flags_untouched & picker_flags_to_forward) | ImGuiColorEditFlags__DisplayMask | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreviewHalf;
             PushItemWidth(square_sz * 12.0f); // Use 256 + bar sizes?
             value_changed |= ColorPicker4("##picker", col, picker_flags, &g.ColorPickerRef.x);
             PopItemWidth();
@@ -4070,7 +4141,7 @@ bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flag
         if (!value_changed_as_float)
             for (int n = 0; n < 4; n++)
                 f[n] = i[n] / 255.0f;
-        if (flags & ImGuiColorEditFlags_HSV)
+        if (flags & ImGuiColorEditFlags_DisplayHSV)
             ColorConvertHSVtoRGB(f[0], f[1], f[2], f[0], f[1], f[2]);
         if (value_changed)
         {
@@ -4182,8 +4253,10 @@ bool ImGui::ColorPicker4(const char* label, float col[4], ImGuiColorEditFlags fl
 {
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = GetCurrentWindow();
-    ImDrawList* draw_list = window->DrawList;
+    if (window->SkipItems)
+        return false;
 
+    ImDrawList* draw_list = window->DrawList;
     ImGuiStyle& style = g.Style;
     ImGuiIO& io = g.IO;
 
@@ -4355,18 +4428,18 @@ bool ImGui::ColorPicker4(const char* label, float col[4], ImGuiColorEditFlags fl
         PushItemWidth((alpha_bar ? bar1_pos_x : bar0_pos_x) + bars_width - picker_pos.x);
         ImGuiColorEditFlags sub_flags_to_forward = ImGuiColorEditFlags__DataTypeMask | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_NoSmallPreview | ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_AlphaPreviewHalf;
         ImGuiColorEditFlags sub_flags = (flags & sub_flags_to_forward) | ImGuiColorEditFlags_NoPicker;
-        if (flags & ImGuiColorEditFlags_RGB || (flags & ImGuiColorEditFlags__InputsMask) == 0)
-            if (ColorEdit4("##rgb", col, sub_flags | ImGuiColorEditFlags_RGB))
+        if (flags & ImGuiColorEditFlags_DisplayRGB || (flags & ImGuiColorEditFlags__DisplayMask) == 0)
+            if (ColorEdit4("##rgb", col, sub_flags | ImGuiColorEditFlags_DisplayRGB))
             {
                 // FIXME: Hackily differenciating using the DragInt (ActiveId != 0 && !ActiveIdAllowOverlap) vs. using the InputText or DropTarget.
                 // For the later we don't want to run the hue-wrap canceling code. If you are well versed in HSV picker please provide your input! (See #2050)
                 value_changed_fix_hue_wrap = (g.ActiveId != 0 && !g.ActiveIdAllowOverlap);
                 value_changed = true;
             }
-        if (flags & ImGuiColorEditFlags_HSV || (flags & ImGuiColorEditFlags__InputsMask) == 0)
-            value_changed |= ColorEdit4("##hsv", col, sub_flags | ImGuiColorEditFlags_HSV);
-        if (flags & ImGuiColorEditFlags_HEX || (flags & ImGuiColorEditFlags__InputsMask) == 0)
-            value_changed |= ColorEdit4("##hex", col, sub_flags | ImGuiColorEditFlags_HEX);
+        if (flags & ImGuiColorEditFlags_DisplayHSV || (flags & ImGuiColorEditFlags__DisplayMask) == 0)
+            value_changed |= ColorEdit4("##hsv", col, sub_flags | ImGuiColorEditFlags_DisplayHSV);
+        if (flags & ImGuiColorEditFlags_DisplayHex || (flags & ImGuiColorEditFlags__DisplayMask) == 0)
+            value_changed |= ColorEdit4("##hex", col, sub_flags | ImGuiColorEditFlags_DisplayHex);
         PopItemWidth();
     }
 
@@ -4561,16 +4634,17 @@ bool ImGui::ColorButton(const char* desc_id, const ImVec4& col, ImGuiColorEditFl
     return pressed;
 }
 
+// Initialize/override default color options
 void ImGui::SetColorEditOptions(ImGuiColorEditFlags flags)
 {
     ImGuiContext& g = *GImGui;
-    if ((flags & ImGuiColorEditFlags__InputsMask) == 0)
-        flags |= ImGuiColorEditFlags__OptionsDefault & ImGuiColorEditFlags__InputsMask;
+    if ((flags & ImGuiColorEditFlags__DisplayMask) == 0)
+        flags |= ImGuiColorEditFlags__OptionsDefault & ImGuiColorEditFlags__DisplayMask;
     if ((flags & ImGuiColorEditFlags__DataTypeMask) == 0)
         flags |= ImGuiColorEditFlags__OptionsDefault & ImGuiColorEditFlags__DataTypeMask;
     if ((flags & ImGuiColorEditFlags__PickerMask) == 0)
         flags |= ImGuiColorEditFlags__OptionsDefault & ImGuiColorEditFlags__PickerMask;
-    IM_ASSERT(ImIsPowerOfTwo((int)(flags & ImGuiColorEditFlags__InputsMask)));   // Check only 1 option is selected
+    IM_ASSERT(ImIsPowerOfTwo((int)(flags & ImGuiColorEditFlags__DisplayMask)));  // Check only 1 option is selected
     IM_ASSERT(ImIsPowerOfTwo((int)(flags & ImGuiColorEditFlags__DataTypeMask))); // Check only 1 option is selected
     IM_ASSERT(ImIsPowerOfTwo((int)(flags & ImGuiColorEditFlags__PickerMask)));   // Check only 1 option is selected
     g.ColorEditOptions = flags;
@@ -4603,7 +4677,7 @@ void ImGui::ColorTooltip(const char* text, const float* col, ImGuiColorEditFlags
 
 void ImGui::ColorEditOptionsPopup(const float* col, ImGuiColorEditFlags flags)
 {
-    bool allow_opt_inputs = !(flags & ImGuiColorEditFlags__InputsMask);
+    bool allow_opt_inputs = !(flags & ImGuiColorEditFlags__DisplayMask);
     bool allow_opt_datatype = !(flags & ImGuiColorEditFlags__DataTypeMask);
     if ((!allow_opt_inputs && !allow_opt_datatype) || !BeginPopup("context"))
         return;
@@ -4611,9 +4685,9 @@ void ImGui::ColorEditOptionsPopup(const float* col, ImGuiColorEditFlags flags)
     ImGuiColorEditFlags opts = g.ColorEditOptions;
     if (allow_opt_inputs)
     {
-        if (RadioButton("RGB", (opts & ImGuiColorEditFlags_RGB) != 0)) opts = (opts & ~ImGuiColorEditFlags__InputsMask) | ImGuiColorEditFlags_RGB;
-        if (RadioButton("HSV", (opts & ImGuiColorEditFlags_HSV) != 0)) opts = (opts & ~ImGuiColorEditFlags__InputsMask) | ImGuiColorEditFlags_HSV;
-        if (RadioButton("HEX", (opts & ImGuiColorEditFlags_HEX) != 0)) opts = (opts & ~ImGuiColorEditFlags__InputsMask) | ImGuiColorEditFlags_HEX;
+        if (RadioButton("RGB", (opts & ImGuiColorEditFlags_DisplayRGB) != 0)) opts = (opts & ~ImGuiColorEditFlags__DisplayMask) | ImGuiColorEditFlags_DisplayRGB;
+        if (RadioButton("HSV", (opts & ImGuiColorEditFlags_DisplayHSV) != 0)) opts = (opts & ~ImGuiColorEditFlags__DisplayMask) | ImGuiColorEditFlags_DisplayHSV;
+        if (RadioButton("Hex", (opts & ImGuiColorEditFlags_DisplayHex) != 0)) opts = (opts & ~ImGuiColorEditFlags__DisplayMask) | ImGuiColorEditFlags_DisplayHex;
     }
     if (allow_opt_datatype)
     {
@@ -4829,7 +4903,7 @@ bool ImGui::TreeNodeBehaviorIsOpen(ImGuiID id, ImGuiTreeNodeFlags flags)
 
     // When logging is enabled, we automatically expand tree nodes (but *NOT* collapsing headers.. seems like sensible behavior).
     // NB- If we are above max depth we still allow manually opened nodes to be logged.
-    if (g.LogEnabled && !(flags & ImGuiTreeNodeFlags_NoAutoOpenOnLog) && window->DC.TreeDepth < g.LogAutoExpandMaxDepth)
+    if (g.LogEnabled && !(flags & ImGuiTreeNodeFlags_NoAutoOpenOnLog) && (window->DC.TreeDepth - g.LogDepthRef) < g.LogDepthToExpand)
         is_open = true;
 
     return is_open;
@@ -4956,7 +5030,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
             const char log_suffix[] = "##";
             LogRenderedText(&text_pos, log_prefix, log_prefix+3);
             RenderTextClipped(text_pos, frame_bb.Max, label, label_end, &label_size);
-            LogRenderedText(&text_pos, log_suffix+1, log_suffix+3);
+            LogRenderedText(&text_pos, log_suffix, log_suffix+2);
         }
         else
         {
@@ -5368,7 +5442,8 @@ void ImGui::PlotEx(ImGuiPlotType plot_type, const char* label, float (*values_ge
 
     RenderFrame(frame_bb.Min, frame_bb.Max, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
 
-    if (values_count > 0)
+    const int values_count_min = (plot_type == ImGuiPlotType_Lines) ? 2 : 1;
+    if (values_count >= values_count_min)
     {
         int res_w = ImMin((int)frame_size.x, values_count) + ((plot_type == ImGuiPlotType_Lines) ? -1 : 0);
         int item_count = values_count + ((plot_type == ImGuiPlotType_Lines) ? -1 : 0);
@@ -6680,7 +6755,7 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
     {
         // Enlarge tab display when hovering
         bb.Max.x = bb.Min.x + (float)(int)ImLerp(bb.GetWidth(), tab->WidthContents, ImSaturate((g.HoveredIdNotActiveTimer - 0.40f) * 6.0f));
-        display_draw_list = GetOverlayDrawList(window);
+        display_draw_list = GetForegroundDrawList(window);
         TabItemBackground(display_draw_list, bb, flags, GetColorU32(ImGuiCol_TitleBgActive));
     }
 #endif
