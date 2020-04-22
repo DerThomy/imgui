@@ -1,2 +1,0 @@
-C:\Dev\Mortify\Mortify\vendor\ImGUI\bin\Debug-windows-x86_64\ImGui\ImGui.pdb
-C:\Dev\Mortify\Mortify\vendor\ImGUI\bin-int\Debug-windows-x86_64\ImGui\ImGui.pdb
